@@ -1,16 +1,35 @@
-# This is a sample Python script.
+# # #   Основы машинного обучения   # # #
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import pandas as pd
+import numpy
+import matplotlib.pyplot as plt
+import os
+import random
+plt.switch_backend('TkAgg')         # to change backend on Tkinter library
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+def random_select_img(numb_of_img):
+    root_dir = 'data_lab1/notMNIST_large'
+    all_files = []
+    for folder in os.listdir(root_dir):
+        inner_folder = os.path.join(root_dir, folder)
+        inner_folder_files = os.listdir(inner_folder)
+        for i in range(len(inner_folder_files)):
+            all_files.append(inner_folder_files[i])
+    return random.choices(all_files, k=numb_of_img)
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+numb_of_img = 4
+selected_img = [None] * numb_of_img
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+fig, ax = plt.subplots(1, 4)
+fig.suptitle('Input images')
+
+selected_img = random_select_img(numb_of_img)       # choose random images from all files
+
+for i in range(numb_of_img):
+    ax[i].title.set_text(f'Image {i + 1}')
+    ax[i].imshow(selected_img[i])
+plt.show()
+
+# img1 = plt.imread('data_lab1/notMNIST_large/J/a2F6b28udHRm.png')

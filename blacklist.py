@@ -1,0 +1,5 @@
+plt.suptitle("/ Task 1 /", fontfamily='monospace', fontstyle='normal', fontsize=15)
+plt.subplot(1, 3, 1), plt.imshow(img, cmap='gray'), plt.title('Input image')
+plt.subplot(1, 3, 2), plt.imshow(abs_shift_log_dft, cmap='gray'), plt.title('Absolute')
+plt.subplot(1, 3, 3), plt.imshow(phase_log_dft, cmap='gray'), plt.title('Phase')
+plt.show()
