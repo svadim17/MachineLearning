@@ -36,6 +36,7 @@ def check_classes_balance(root_dir, epsilon):
 
 root_dir = 'data_lab1/notMNIST_large'
 
+
 # Task 1 #
 fig, ax = plt.subplots(2, 5)
 fig.suptitle('Input images')
