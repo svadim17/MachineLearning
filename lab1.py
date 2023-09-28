@@ -9,6 +9,7 @@ plt.switch_backend('TkAgg')         # to change backend on Tkinter library
 
 
 def random_select_img(root_dir):
+    """ This function random choices one image from every folder """
     rand_images = []
     for folder in os.listdir(root_dir):
         inner_folder = os.path.join(root_dir, folder)
@@ -18,6 +19,7 @@ def random_select_img(root_dir):
 
 
 def check_classes_balance(root_dir, epsilon):
+    """ This function """
     numb_of_files_in_classes = []
     for folder in os.listdir(root_dir):
         inner_folder = os.path.join(root_dir, folder)
@@ -34,6 +36,26 @@ def check_classes_balance(root_dir, epsilon):
     return numb_of_files_in_classes, balance_flag
 
 
+# def collect_all_images(root_dir):
+#     """ This function collect all images in one list """
+#     all_files = []
+#     for folder in os.listdir(root_dir):
+#         inner_folder = os.path.join(root_dir, folder)
+#         inner_folder_files = os.listdir(inner_folder)
+#         [all_files.append(elem) for elem in inner_folder_files]
+#     return all_files
+
+
+def collect_samples(root_dir, count):
+    """ This function collect sample by random images, where count is given """
+    data = []
+    for folder in os.listdir(root_dir):
+        inner_folder = os.path.join(root_dir, folder)
+        inner_folder_files = os.listdir(inner_folder)
+        data.append(random.choices(inner_folder_files, k=count))
+    return data
+
+
 root_dir = 'data_lab1/notMNIST_large'
 
 
@@ -44,7 +66,7 @@ selected_img = random_select_img(root_dir)       # choose random images from all
 for i in range(len(selected_img)):
     selected_img[i] = plt.imread(selected_img[i])
     plt.subplot(2, 5, i + 1)
-    plt.imshow(selected_img[i])
+    plt.imshow(selected_img[i], cmap='grey')
     plt.title(f'Image {i + 1}')
 plt.show()
 
@@ -64,3 +86,26 @@ if balance_flag:
     print('Classes are balanced')
 else:
     print('Classes are unbalanced')
+
+
+# Task 3 #
+# all_files = collect_all_images(root_dir)
+train_sample = collect_samples(root_dir, count=20000)
+validate_sample = collect_samples(root_dir, count=1000)
+test_sample = collect_samples(root_dir, count=1900)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
