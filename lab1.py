@@ -46,14 +46,63 @@ def check_classes_balance(root_dir, epsilon):
 #     return all_files
 
 
-def collect_samples(root_dir, count):
-    """ This function collect sample by random images, where count is given """
-    data = []
+def collect_samples(root_dir, train_count, validate_count, test_count):
+    """ This function first collect train, validate and test samples from one folder.
+    Then with another function find similar between samples and removes them.
+    Function collects parts of data from all inner folders and packs it in 3 samples """
+    train_sample, validate_sample, test_sample = [], [], []
     for folder in os.listdir(root_dir):
         inner_folder = os.path.join(root_dir, folder)
         inner_folder_files = os.listdir(inner_folder)
-        data.append(random.choices(inner_folder_files, k=count))
-    return data
+        train_part = random.choices(inner_folder_files, k=train_count)
+        validate_part = random.choices(inner_folder_files, k=validate_count)
+        test_part = random.choices(inner_folder_files, k=test_count)
+
+        # check similar elements and remove them
+        status, train_part_removed, validate_part_removed = remove_similar_elements(train_part, validate_part, test_part)
+        while status:
+            train_part = train_part_removed + random.choices(inner_folder_files, k=(train_count - len(train_part_removed)))     # add missing elements
+            validate_part = validate_part_removed + random.choices(inner_folder_files, k=(validate_count - len(validate_part_removed)))    # add missing elements
+            # again find and remove similar elements if they exist
+            status, train_part_removed, validate_part_removed = remove_similar_elements(train_part, validate_part, test_part)
+
+        train_sample.append(train_part)
+        validate_sample.append(validate_part)
+        test_sample.append(test_part)
+
+    train_sample = list_of_lists_to_list(input_list=train_sample)
+    validate_sample = list_of_lists_to_list(input_list=validate_sample)
+    test_sample = list_of_lists_to_list(input_list=test_sample)
+
+    return train_sample, validate_sample, test_sample
+
+
+def remove_similar_elements(train_part, validate_part, test_part):
+    """ This function makes sets from lists, find similar elements and removes them"""
+    train_set = set(train_part)
+    validate_set = set(validate_part)
+    test_set = set(test_part)
+    intersect_12 = train_set.intersection(validate_set)
+    intersect_13 = train_set.intersection(test_set)
+    intersect_23 = validate_set.intersection(test_set)
+
+    if intersect_12 or intersect_13 or intersect_23:                        # do it if not empty
+        train_part = list(train_set - intersect_12 - intersect_13)
+        validate_part = list(validate_set - intersect_23)
+        status = True       # status = True if similar elements between samples were removed
+    else:
+        status = False      # status = False if there are no similar elements between samples
+
+    return status, train_part, validate_part
+
+
+def list_of_lists_to_list(input_list):
+    """ This function convert a list of lists to one list """
+    out_list = []
+    for inner_list in input_list:
+        for elem in inner_list:
+            out_list.append(elem)
+    return out_list
 
 
 root_dir = 'data_lab1/notMNIST_large'
@@ -88,11 +137,13 @@ else:
     print('Classes are unbalanced')
 
 
-# Task 3 #
-# all_files = collect_all_images(root_dir)
-train_sample = collect_samples(root_dir, count=20000)
-validate_sample = collect_samples(root_dir, count=1000)
-test_sample = collect_samples(root_dir, count=1900)
+# Task 3 and Task 4 #
+train_sample, validate_sample, test_sample = collect_samples(root_dir,
+                                                             train_count=20000, validate_count=1000, test_count=1900)
+print(len(train_sample), len(validate_sample), len(test_sample))
+
+
+
 
 
 
