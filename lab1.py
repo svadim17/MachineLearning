@@ -5,6 +5,7 @@ import numpy
 import matplotlib.pyplot as plt
 import os
 import random
+from sklearn.linear_model import LinearRegression
 plt.switch_backend('TkAgg')         # to change backend on Tkinter library
 
 
@@ -19,7 +20,8 @@ def random_select_img(root_dir):
 
 
 def check_classes_balance(root_dir, epsilon):
-    """ This function """
+    """ This function counts number of files in each class and compares this values with each other.
+    If the difference is greater than epsilon, it means that classes are not balanced"""
     numb_of_files_in_classes = []
     for folder in os.listdir(root_dir):
         inner_folder = os.path.join(root_dir, folder)
@@ -124,25 +126,27 @@ plt.show()
 epsilon = 5     # epsilon for check classes balance
 numb_of_files_in_classes, balance_flag = check_classes_balance(root_dir, epsilon)
 
-fig, ax = plt.subplots(1, 1)                # show distribution on plot
+if balance_flag:
+    print('Classes are balanced')
+else:
+    print('Classes are unbalanced')
+
+fig, ax = plt.subplots(1, 1)  # show distribution on plot
 fig.suptitle('Histogram of file distribution by class')
 indexes_bar = os.listdir(root_dir)
 plt.bar(indexes_bar, numb_of_files_in_classes)
 plt.xlabel('Classes'), plt.ylabel('Number of files')
 plt.show()
 
-if balance_flag:
-    print('Classes are balanced')
-else:
-    print('Classes are unbalanced')
-
 
 # Task 3 and Task 4 #
 train_sample, validate_sample, test_sample = collect_samples(root_dir,
                                                              train_count=20000, validate_count=1000, test_count=1900)
-print(len(train_sample), len(validate_sample), len(test_sample))
+print(train_sample[0:3])
 
 
+# Task 5 #
+log_reg_classificator = LinearRegression()
 
 
 
