@@ -176,4 +176,3 @@ plt.show()
 save_result_to_file(train_size=int(train_proportion * len(images)), accuracy=round(accuracy * 100, 2))
 
 # Plotting the dependence of the classificator accuracy on the size of the training dataset
-
