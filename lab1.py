@@ -1,166 +1,203 @@
-# # #   Основы машинного обучения   # # #
+# # # Basics of Machine Learning # # #
 
+import matplotlib
+import numpy as np
 import pandas as pd
 import numpy
 import matplotlib.pyplot as plt
+from PIL import Image
 import os
 import random
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 plt.switch_backend('TkAgg')         # to change backend on Tkinter library
+matplotlib.use('TkAgg', force=True)
 
 
-def random_select_img(root_dir):
-    """ This function random choices one image from every folder """
-    rand_images = []
-    for folder in os.listdir(root_dir):
-        inner_folder = os.path.join(root_dir, folder)
-        inner_folder_files = os.listdir(inner_folder)
-        rand_images.append(inner_folder + '/' + random.choice(inner_folder_files))
-    return rand_images
+# data_dir = 'data_lab1/notMNIST_large'
+data_dir = 'data_lab1/notMNIST_small'
 
 
-def check_classes_balance(root_dir, epsilon):
-    """ This function counts number of files in each class and compares this values with each other.
-    If the difference is greater than epsilon, it means that classes are not balanced"""
-    numb_of_files_in_classes = []
-    for folder in os.listdir(root_dir):
-        inner_folder = os.path.join(root_dir, folder)
-        inner_folder_files = os.listdir(inner_folder)
-        numb_of_files_in_classes.append(len(inner_folder_files))
+def collect_data(data_dir):
+    """ This function creates an array of images and an array of labels """
+    images = []
+    labels = []
+    for class_label in os.listdir(data_dir):     # create labels 0:9 for folders names
+        class_dir = os.path.join(data_dir, class_label)      # directories for every class
+        for image_file in os.listdir(class_dir):
+            image_path = os.path.join(class_dir, image_file)    # get full path for image
+            image = Image.open(image_path)
+            image_array = np.array(image)
+            images.append(image_array)
+            labels.append(class_label)
+    images = np.array(images)
+    labels = np.array(labels)
+    return images, labels
 
-    balance_flag = True
-    for i in numb_of_files_in_classes:
-        first_elem = i
-        for element in numb_of_files_in_classes:
-            if abs(first_elem - element) > epsilon:
-                balance_flag = False
+
+def check_classes_balance(epsilon, labels):
+    """ This function counts the number of elements in every class and return balance flag
+    (True - classes are balanced, False - classes are not balanced) """
+    flag = True
+    unique_classes, classes_counts = np.unique(labels, return_counts=True)      # return number of classes and length of every class
+    for elem1 in classes_counts:
+        for elem2 in classes_counts:
+            if abs(elem1 - elem2) > epsilon:
+                flag = False
                 break
-    return numb_of_files_in_classes, balance_flag
+    return unique_classes, classes_counts, flag
 
 
-# def collect_all_images(root_dir):
-#     """ This function collect all images in one list """
-#     all_files = []
-#     for folder in os.listdir(root_dir):
-#         inner_folder = os.path.join(root_dir, folder)
-#         inner_folder_files = os.listdir(inner_folder)
-#         [all_files.append(elem) for elem in inner_folder_files]
-#     return all_files
+def calculate_datasets_proportions(train_size):
+    """ This function calculate proportions of every dataset """
+    train = train_size / 100
+    valid_and_test = 1 - train
+    test = valid_and_test / 4
+    valid = valid_and_test - test
+    return train, valid, test
 
 
-def collect_samples(root_dir, train_count, validate_count, test_count):
-    """ This function first collect train, validate and test samples from one folder.
-    Then with another function find similar between samples and removes them.
-    Function collects parts of data from all inner folders and packs it in 3 samples """
-    train_sample, validate_sample, test_sample = [], [], []
-    for folder in os.listdir(root_dir):
-        inner_folder = os.path.join(root_dir, folder)
-        inner_folder_files = os.listdir(inner_folder)
-        train_part = random.choices(inner_folder_files, k=train_count)
-        validate_part = random.choices(inner_folder_files, k=validate_count)
-        test_part = random.choices(inner_folder_files, k=test_count)
+def check_and_remove_similar(dataset1, labels1, dataset2, dataset3):
+    """ This function find and removes elements from dataset_1 that similar with 2 other datasets """
+    dataset1_list = dataset1.tolist()
+    dataset2_list = dataset2.tolist()
+    dataset3_list = dataset3.tolist()
+    similar_indices = []
 
-        # check similar elements and remove them
-        status, train_part_removed, validate_part_removed = remove_similar_elements(train_part, validate_part, test_part)
-        while status:
-            train_part = train_part_removed + random.choices(inner_folder_files, k=(train_count - len(train_part_removed)))     # add missing elements
-            validate_part = validate_part_removed + random.choices(inner_folder_files, k=(validate_count - len(validate_part_removed)))    # add missing elements
-            # again find and remove similar elements if they exist
-            status, train_part_removed, validate_part_removed = remove_similar_elements(train_part, validate_part, test_part)
+    for i, sublist1 in enumerate(dataset1_list):
+        if sublist1 in dataset2_list or sublist1 in dataset3_list:
+            similar_indices.append(i)
 
-        train_sample.append(train_part)
-        validate_sample.append(validate_part)
-        test_sample.append(test_part)
+    dataset1_filtered = np.delete(dataset1, similar_indices, axis=0)
+    labels1_filtered = np.delete(labels1, similar_indices)
+    numb_of_deleted = len(similar_indices)
 
-    train_sample = list_of_lists_to_list(input_list=train_sample)
-    validate_sample = list_of_lists_to_list(input_list=validate_sample)
-    test_sample = list_of_lists_to_list(input_list=test_sample)
-
-    return train_sample, validate_sample, test_sample
-
-
-def remove_similar_elements(train_part, validate_part, test_part):
-    """ This function makes sets from lists, find similar elements and removes them"""
-    train_set = set(train_part)
-    validate_set = set(validate_part)
-    test_set = set(test_part)
-    intersect_12 = train_set.intersection(validate_set)
-    intersect_13 = train_set.intersection(test_set)
-    intersect_23 = validate_set.intersection(test_set)
-
-    if intersect_12 or intersect_13 or intersect_23:                        # do it if not empty
-        train_part = list(train_set - intersect_12 - intersect_13)
-        validate_part = list(validate_set - intersect_23)
-        status = True       # status = True if similar elements between samples were removed
+    if numb_of_deleted != 0:
+        print(f'{numb_of_deleted} similar elements were deleted')
     else:
-        status = False      # status = False if there are no similar elements between samples
-
-    return status, train_part, validate_part
-
-
-def list_of_lists_to_list(input_list):
-    """ This function convert a list of lists to one list """
-    out_list = []
-    for inner_list in input_list:
-        for elem in inner_list:
-            out_list.append(elem)
-    return out_list
+        print('There are no similar elements')
+    return dataset1_filtered, labels1_filtered
 
 
-root_dir = 'data_lab1/notMNIST_large'
+def convert_to_2D_array(dataset):
+    """ This function convert input dataset with 3D dimension to 2D array """
+    numb_of_elements = len(dataset)                             # number of images
+    numb_of_pixels = len(dataset[0]) * len(dataset[0][0])       # size of image (28x28)
+    dataset_2D = dataset.reshape(numb_of_elements, numb_of_pixels)
+    return dataset_2D
 
 
-# Task 1 #
+def random_choice_from_2_arrays(data, labels):
+    """ This function randomly chooses 10 images and 10 labels with same indices """
+    rand_indices = random.choices(range(0, len(data)), k=10)
+    rand_images_predict = data[rand_indices]
+    rand_labels_predict = labels[rand_indices]
+    return rand_images_predict, rand_labels_predict
+
+
+def save_result_to_file(train_size, accuracy, file_dir):
+    """ This function make a dictionary of train dataset size and accuracy of prediction and save it to file """
+    temp_dict = {"train_size": train_size, "accuracy": accuracy}
+    file = open(file_dir, mode='a')
+    # for key, value in temp_dict.items():
+    file.write(f'{str(temp_dict)}\n')
+    file.close()
+
+
+def read_data_from_file(file_dir):
+    """ This function read a dictionary from file and return
+    a list of size of training datasets and a list of accuracies """
+    train_size_file = []
+    accuracy_file = []
+    with open(file_dir, 'r') as file:
+        lines = file.readlines()
+    for i in range(len(lines)):
+        line = eval(lines[i])
+        train_size_file.append(line['train_size'])
+        accuracy_file.append(line['accuracy'])
+
+    return train_size_file, accuracy_file
+
+
+# # #   Task 1   # # #
+images, labels = collect_data(data_dir)
 fig, ax = plt.subplots(2, 5)
-fig.suptitle('Input images')
-selected_img = random_select_img(root_dir)       # choose random images from all files
-for i in range(len(selected_img)):
-    selected_img[i] = plt.imread(selected_img[i])
+fig.suptitle('Examples of 10 random input images')
+for i in range(10):
     plt.subplot(2, 5, i + 1)
-    plt.imshow(selected_img[i], cmap='grey')
-    plt.title(f'Image {i + 1}')
+    plt.imshow(images[random.choice(range(0, len(images)))], cmap='grey')       # show 10 random images
+    plt.axis(False)
+    plt.title(str(i + 1))
 plt.show()
 
 
-# Task 2 #
-epsilon = 5     # epsilon for check classes balance
-numb_of_files_in_classes, balance_flag = check_classes_balance(root_dir, epsilon)
-
+# # #   Task 2   # # #
+classes_names, classes_counts, balance_flag = check_classes_balance(epsilon=5, labels=labels)
 if balance_flag:
     print('Classes are balanced')
 else:
     print('Classes are unbalanced')
 
-fig, ax = plt.subplots(1, 1)  # show distribution on plot
+fig, ax = plt.subplots(1, 1)    # show distribution on plot
 fig.suptitle('Histogram of file distribution by class')
-indexes_bar = os.listdir(root_dir)
-plt.bar(indexes_bar, numb_of_files_in_classes)
-plt.xlabel('Classes'), plt.ylabel('Number of files')
+plt.bar(classes_names, classes_counts)
+plt.xlabel('Classes by name'), plt.ylabel('Number of elements')
 plt.show()
 
 
-# Task 3 and Task 4 #
-train_sample, validate_sample, test_sample = collect_samples(root_dir,
-                                                             train_count=20000, validate_count=1000, test_count=1900)
-print(train_sample[0:3])
+# # #   Task 3   # # #
+# train = 94 %      valid = 5 %     test = 1 %      (calculated from input task)
+print(f'Total number of images is {len(images)}')
+train_dataset_size = float(input('Choose the size of training dataset in % : '))
+train_proportion, valid_proportion, test_proportion = calculate_datasets_proportions(train_dataset_size)
+print(f'The size of training dataset is {train_proportion * len(images)}')
+print(f'The size of validating dataset is {valid_proportion * len(images)}')
+print(f'The size of testing dataset is {test_proportion * len(images)}')
+
+train_dataset, temp_dataset, train_labels, temp_labels = train_test_split(images, labels,
+                                    test_size=(1 - train_proportion), random_state=42)
+valid_dataset, test_dataset, valid_labels, test_labels = train_test_split(temp_dataset, temp_labels,
+                                    test_size=(test_proportion / (valid_proportion + test_proportion)), random_state=42)
 
 
-# Task 5 #
-log_reg_classificator = LinearRegression()
+# # #   Task 4   # # #
+train_dataset, train_labels = check_and_remove_similar(train_dataset, train_labels, valid_dataset, test_dataset)
 
 
+# # #   Task 5   # # #
+train_dataset = convert_to_2D_array(train_dataset)
+valid_dataset = convert_to_2D_array(valid_dataset)
+test_dataset = convert_to_2D_array(test_dataset)
 
+classificator = LogisticRegression(max_iter=100)    # max_iter=100 - default value
+classificator.fit(train_dataset, train_labels)      # training
 
+valid_labels_predict = classificator.predict(valid_dataset)
+accuracy = accuracy_score(valid_labels, valid_labels_predict)
+print(f'The accuracy of predicting is {round(accuracy * 100, 2)} %')
 
+rand_images_predict, rand_labels_predict = random_choice_from_2_arrays(valid_dataset, valid_labels_predict)  # choose random images to show result
 
+fig, ax = plt.subplots(2, 5)
+fig.suptitle('Examples of 10 random predicted images')
+for i in range(10):
+    plt.subplot(2, 5, i + 1)
+    plt.imshow(rand_images_predict[i].reshape(28, 28), cmap='grey')       # reshape to image size (28x28)
+    plt.axis(False)
+    plt.title(str(rand_labels_predict[i]))
+plt.show()
 
+# save_result_to_file(train_size=int(train_proportion * len(images)), accuracy=round(accuracy * 100, 2),
+#                     file_dir='files/accuracy_history_small.txt')
 
+# Plotting the dependence of the classificator accuracy on the size of the training dataset
+train_sizes, accuracies = read_data_from_file(file_dir='files/accuracy_history_small.txt')
+x_axis = np.array(train_sizes)
+y_axis = np.array(accuracies)
 
-
-
-
-
-
-
-
-
+fig, ax = plt.subplots(1, 1)    # show distribution on plot
+fig.suptitle('The dependence of classificator accuracy on the size of the training dataset')
+plt.plot(x_axis, y_axis)
+plt.xlabel('The size of the training dataset, count'), plt.ylabel('Resulting accuracy, %')
+plt.show()

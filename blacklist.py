@@ -1,6 +1,6 @@
-file = open('text.txt', 'w')
-for key, value in a.items():
-  file.write(f'{key}, {value}\n')
-file.close()
-
-self.record_file.write(f'{str(packet._asdict())}\n')
+with open('files/accuracy_history_small.txt', 'r') as file:
+    lines = file.readlines()
+print(lines)
+for i in range(len(lines)):
+    line = eval(lines[i])
+    print(line)
