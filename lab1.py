@@ -15,8 +15,8 @@ plt.switch_backend('TkAgg')         # to change backend on Tkinter library
 matplotlib.use('TkAgg', force=True)
 
 
-# data_dir = 'data_lab1/notMNIST_large'
-data_dir = 'data_lab1/notMNIST_small'
+# data_dir = 'datasets/notMNIST_large'
+data_dir = 'datasets/notMNIST_small'
 
 
 def collect_data(data_dir):
