@@ -283,4 +283,3 @@ class Lab1Widget(QDockWidget, QWidget):
         tab4_layout = QVBoxLayout(tab4)
         tab4_layout.addWidget(canvas4)
         self.tab_widget_graphs.addTab(tab4, 'Graph 4')
-

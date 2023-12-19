@@ -14,7 +14,6 @@ from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import layers, models
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import seaborn as sns       # for create custom graphs
 
 
 class Lab2Widget(QDockWidget, QWidget):
