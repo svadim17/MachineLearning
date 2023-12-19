@@ -1,0 +1,240 @@
+from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+import matplotlib
+import numpy as np
+import os
+import random
+import pandas as pd
+import matplotlib.pyplot as plt
+from PIL import Image
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras import layers, models
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import seaborn as sns       # for create custom graphs
+
+
+class Lab2Widget(QDockWidget, QWidget):
+    def __init__(self):
+        super().__init__('Lab 2')
+        self.central_widget = QWidget(self)
+        self.setWidget(self.central_widget)
+        self.main_layout = QVBoxLayout(self.central_widget)
+
+        # self.data_dir = '~/PycharmProjects/MachineLearning/datasets/notMNIST_large'
+        self.data_dir = '/home/vadim/PycharmProjects/MachineLearning/datasets/notMNIST_small'
+
+        self.create_widgets()
+        self.add_widgets_to_layout()
+
+    def create_widgets(self):
+        self.log_widget = QTextEdit()
+        self.log_widget.setReadOnly(True)
+        self.log_widget.setFontPointSize(14)
+        self.log_widget.setMaximumHeight(250)
+        text = 'Laboratory 2: Implementation of a deep neural network\n\n\n'
+        text += 'Dataset: notMNIST\n\n'
+        self.log_widget.setText(text)
+
+        self.l_spb_train_size = QLabel('Train size')
+        self.spb_train_size = QSpinBox()
+        self.spb_train_size.setRange(10, 99)
+        self.spb_train_size.setValue(60)
+        self.spb_train_size.setSingleStep(5)
+        self.spb_train_size.setSuffix('  %')
+        self.spb_train_size.setStyleSheet("QSpinBox::up-button {height: 20px;}"
+                                          "QSpinBox::down-button {height: 20px;}")
+
+        self.l_spb_epoch_count = QLabel('Epoch count')
+        self.spb_epoch_count = QSpinBox()
+        self.spb_epoch_count.setRange(1, 100)
+        self.spb_epoch_count.setValue(10)
+        self.spb_epoch_count.setSingleStep(1)
+
+        self.tab_widget_graphs = QTabWidget()
+
+        self.btn_start = QPushButton('Start')
+        self.btn_start.setFixedHeight(33)
+
+    def add_widgets_to_layout(self):
+        spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        controls_layout = QVBoxLayout()
+        controls_layout.addWidget(self.l_spb_train_size)
+        controls_layout.addWidget(self.spb_train_size)
+        controls_layout.addSpacing(20)
+        controls_layout.addWidget(self.l_spb_epoch_count)
+        controls_layout.addWidget(self.spb_epoch_count)
+        controls_layout.addSpacerItem(spacerItem)
+
+        top_layout = QHBoxLayout()
+        top_layout.addWidget(self.log_widget)
+        top_layout.addLayout(controls_layout)
+
+        self.main_layout.addLayout(top_layout)
+        # self.main_layout.addWidget(self.log_widget)
+        self.main_layout.addWidget(self.tab_widget_graphs)
+        self.main_layout.addWidget(self.btn_start)
+        # self.main_layout.addItem(spacerItem)
+
+    def processor(self):
+        self.log_widget.clear()
+        self.tab_widget_graphs.clear()
+
+        # # # Show examples of images # # #
+        images, labels = self.collect_data()
+        fig1, ax1 = plt.subplots(2, 5)
+        fig1.suptitle('Examples of 10 random input images')
+        for i in range(10):
+            plt.subplot(2, 5, i + 1)
+            plt.imshow(images[random.choice(range(0, len(images)))], cmap='grey')  # show 10 random images
+            plt.axis(False)
+            plt.title(str(i + 1))
+        # plt.show()
+
+        # # # Check balance # # #
+        classes_names, classes_counts, balance_flag = self.check_classes_balance(epsilon=5, labels=labels)
+        if balance_flag:
+            print('Classes are balanced')
+            self.log_widget.append('Classes are balanced')
+        else:
+            print('Classes are unbalanced')
+            self.log_widget.append('Classes are unbalanced')
+
+        fig2, ax2 = plt.subplots(1, 1)  # show distribution on plot
+        fig2.suptitle('Histogram of file distribution by class')
+        plt.bar(classes_names, classes_counts)
+        plt.xlabel('Classes by name'), plt.ylabel('Number of elements')
+        # plt.show()
+
+        # # # Splitting on train, test, valid datasets # # #
+        print(f'Total number of images is {len(images)}')
+        self.log_widget.append(f'Total number of images is {len(images)}')
+        train_dataset_size = self.spb_train_size.value()
+        train_proportion, valid_proportion, test_proportion = self.calculate_datasets_proportions(train_dataset_size)
+        print(f'The size of training dataset is {int(train_proportion * len(images))}')
+        print(f'The size of validating dataset is {int(valid_proportion * len(images))}')
+        print(f'The size of testing dataset is {int(test_proportion * len(images))}')
+        self.log_widget.append(f'The size of training dataset is {int(train_proportion * len(images))}')
+        self.log_widget.append(f'The size of validating dataset is {int(valid_proportion * len(images))}')
+        self.log_widget.append(f'The size of testing dataset is {int(test_proportion * len(images))}')
+
+        # # # Converting labels # # #
+        encoded_labels = LabelEncoder().fit_transform(labels)       # converting to numbers
+        converted_labels = to_categorical(encoded_labels)           # converting to one-hot encoding (like a binary)
+
+        train_dataset, temp_dataset, train_labels, temp_labels = train_test_split(images, converted_labels,
+                                                                                  test_size=(1 - train_proportion),
+                                                                                  random_state=42)
+        valid_dataset, test_dataset, valid_labels, test_labels = train_test_split(temp_dataset, temp_labels,
+                                                                                  test_size=(test_proportion / (
+                                                                                          valid_proportion + test_proportion)),
+                                                                                  random_state=42)
+
+        # # # Check and remove similar elements # # #
+        train_dataset, train_labels = self.check_and_remove_similar(train_dataset, train_labels, valid_dataset, test_dataset)
+
+        # # # Convert to numpy array # # #
+        train_dataset = np.array(train_dataset)
+        test_dataset = np.array(test_dataset)
+        valid_dataset = np.array(valid_dataset)
+
+        # # # Normalization # # #
+        train_dataset = train_dataset / 255.0
+        test_dataset = test_dataset / 255.0
+        valid_dataset = valid_dataset / 255.0
+
+        # # # Define Neural Network # # #
+        model = models.Sequential([
+            layers.Flatten(input_shape=(28, 28, 1)),        # input layer (aligning the image before send it to input of neural network)
+            layers.Dense(units=256, activation='tanh'),     # hidden layer
+            layers.Dense(units=128, activation='tanh'),     # hidden layer
+            layers.Dense(units=64, activation='tanh'),      # hidden layer
+            layers.Dense(units=10, activation='softmax')    # output layer
+        ])
+
+        # # # Compiling model # # #
+        """ This step prepares the model for the training process by defining the optimizer, loss function and
+            metrics that will be used in the training process.
+            - Оптимизатор отвечает за обновление весов модели в процессе обучения с целью минимизации функции потерь.
+            Указан оптимизатор стохастического градиентного спуска ('sgd'), который является базовым оптимизатором
+            для обучения моделей.
+            - Функция потерь определяет, как модель оценивает ошибку между предсказанными значениями и фактическими
+            метками на обучающих данных. Bспользуется функция потерь 'categorical_crossentropy', 
+            что является стандартным выбором для задачи классификации с несколькими классами. 
+            - Метрики представляют собой дополнительные метрики, которые будут оцениваться в процессе обучения
+            для оценки производительности модели. В данном случае, используется метрика 'accuracy', 
+            которая измеряет точность классификации (долю правильных предсказаний). """
+        model.compile(optimizer='sgd',
+                      loss='categorical_crossentropy',
+                      metrics=['accuracy'])
+
+        # # # Model Training # # #
+        history = model.fit(train_dataset, train_labels, epochs=self.spb_epoch_count.value(), batch_size=32,
+                            validation_data=(valid_dataset, valid_labels))
+
+        test_loss, test_accuracy = model.evaluate(test_dataset, test_labels)
+        print(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
+        self.log_widget.append(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
+
+    def collect_data(self):
+        """ This function creates an array of images and an array of labels """
+        images = []
+        labels = []
+        for class_label in os.listdir(self.data_dir):  # create labels 0:9 for folders names
+            class_dir = os.path.join(self.data_dir, class_label)  # directories for every class
+            for image_file in os.listdir(class_dir):
+                image_path = os.path.join(class_dir, image_file)  # get full path for image
+                image = Image.open(image_path)
+                image_array = np.array(image)
+                images.append(image_array)
+                labels.append(class_label)
+        images = np.array(images)
+        labels = np.array(labels)
+        return images, labels
+
+    def check_classes_balance(self, epsilon, labels):
+        """ This function counts the number of elements in every class and return balance flag
+        (True - classes are balanced, False - classes are not balanced) """
+        flag = True
+        unique_classes, classes_counts = np.unique(labels,
+                                                   return_counts=True)  # return number of classes and length of every class
+        for elem1 in classes_counts:
+            for elem2 in classes_counts:
+                if abs(elem1 - elem2) > epsilon:
+                    flag = False
+                    break
+        return unique_classes, classes_counts, flag
+
+    def calculate_datasets_proportions(self, train_size):
+        """ This function calculate proportions of every dataset """
+        train = train_size / 100
+        valid_and_test = 1 - train
+        test = valid_and_test / 2
+        valid = valid_and_test - test
+        return train, valid, test
+
+    def check_and_remove_similar(self, dataset1, labels1, dataset2, dataset3):
+        """ This function find and removes elements from dataset_1 that similar with 2 other datasets """
+        dataset1_list = dataset1.tolist()
+        dataset2_list = dataset2.tolist()
+        dataset3_list = dataset3.tolist()
+        similar_indices = []
+
+        for i, sublist1 in enumerate(dataset1_list):
+            if sublist1 in dataset2_list or sublist1 in dataset3_list:
+                similar_indices.append(i)
+
+        dataset1_filtered = np.delete(dataset1, similar_indices, axis=0)
+        labels1_filtered = np.delete(labels1, similar_indices, axis=0)
+        numb_of_deleted = len(similar_indices)
+
+        if numb_of_deleted != 0:
+            print(f'{numb_of_deleted} similar elements were deleted')
+            self.log_widget.append(f'{numb_of_deleted} similar elements were deleted')
+        else:
+            print('There are no similar elements')
+            self.log_widget.append('There are no similar elements')
+        return dataset1_filtered, labels1_filtered
