@@ -1,19 +1,13 @@
-from PyQt5 import QtWidgets, QtGui
-from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import Qt
-import matplotlib
 import numpy as np
 import os
 import random
-import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import seaborn as sns       # for create custom graphs
 
 
 class Lab1Widget(QDockWidget, QWidget):
@@ -41,7 +35,7 @@ class Lab1Widget(QDockWidget, QWidget):
         self.l_spb_train_size = QLabel('Train size')
         self.spb_train_size = QSpinBox()
         self.spb_train_size.setRange(10, 99)
-        self.spb_train_size.setValue(80)
+        self.spb_train_size.setValue(60)
         self.spb_train_size.setSingleStep(5)
         self.spb_train_size.setSuffix('  %')
         self.spb_train_size.setStyleSheet("QSpinBox::up-button {height: 20px;}"
@@ -100,17 +94,16 @@ class Lab1Widget(QDockWidget, QWidget):
         # plt.show()
 
         # # #   Task 3   # # #
-        # train = 94 %      valid = 5 %     test = 1 %      (calculated from input task)
         print(f'Total number of images is {len(images)}')
         self.log_widget.append(f'Total number of images is {len(images)}')
         train_dataset_size = self.spb_train_size.value()
         train_proportion, valid_proportion, test_proportion = self.calculate_datasets_proportions(train_dataset_size)
-        print(f'The size of training dataset is {train_proportion * len(images)}')
-        print(f'The size of validating dataset is {valid_proportion * len(images)}')
-        print(f'The size of testing dataset is {test_proportion * len(images)}')
-        self.log_widget.append(f'The size of training dataset is {train_proportion * len(images)}')
-        self.log_widget.append(f'The size of validating dataset is {valid_proportion * len(images)}')
-        self.log_widget.append(f'The size of testing dataset is {test_proportion * len(images)}')
+        print(f'The size of training dataset is {int(train_proportion * len(images))}')
+        print(f'The size of validating dataset is {int(valid_proportion * len(images))}')
+        print(f'The size of testing dataset is {int(test_proportion * len(images))}')
+        self.log_widget.append(f'The size of training dataset is {int(train_proportion * len(images))}')
+        self.log_widget.append(f'The size of validating dataset is {int(valid_proportion * len(images))}')
+        self.log_widget.append(f'The size of testing dataset is {int(test_proportion * len(images))}')
 
         train_dataset, temp_dataset, train_labels, temp_labels = train_test_split(images, labels,
                                                                                   test_size=(1 - train_proportion),
@@ -198,7 +191,7 @@ class Lab1Widget(QDockWidget, QWidget):
         """ This function calculate proportions of every dataset """
         train = train_size / 100
         valid_and_test = 1 - train
-        test = valid_and_test / 4
+        test = valid_and_test / 2
         valid = valid_and_test - test
         return train, valid, test
 
@@ -214,13 +207,15 @@ class Lab1Widget(QDockWidget, QWidget):
                 similar_indices.append(i)
 
         dataset1_filtered = np.delete(dataset1, similar_indices, axis=0)
-        labels1_filtered = np.delete(labels1, similar_indices)
+        labels1_filtered = np.delete(labels1, similar_indices,  axis=0)
         numb_of_deleted = len(similar_indices)
 
         if numb_of_deleted != 0:
             print(f'{numb_of_deleted} similar elements were deleted')
+            self.log_widget.append(f'{numb_of_deleted} similar elements were deleted')
         else:
             print('There are no similar elements')
+            self.log_widget.append('There are no similar elements')
         return dataset1_filtered, labels1_filtered
 
     def convert_to_2D_array(self, dataset):
