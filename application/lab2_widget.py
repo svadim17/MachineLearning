@@ -11,8 +11,11 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras import layers, models
+from tensorflow.keras import regularizers
+from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import seaborn as sns       # for create custom graphs
 
@@ -37,6 +40,7 @@ class Lab2Widget(QDockWidget, QWidget):
         self.log_widget.setReadOnly(True)
         self.log_widget.setFontPointSize(14)
         self.log_widget.setMaximumHeight(250)
+        self.log_widget.setMaximumWidth(650)
         text = 'Laboratory 2: Implementation of a deep neural network\n\n\n'
         text += 'Dataset: notMNIST\n\n'
         self.log_widget.setText(text)
@@ -52,28 +56,60 @@ class Lab2Widget(QDockWidget, QWidget):
 
         self.l_spb_epoch_count = QLabel('Epoch count')
         self.spb_epoch_count = QSpinBox()
-        self.spb_epoch_count.setRange(1, 100)
+        self.spb_epoch_count.setRange(1, 1000)
         self.spb_epoch_count.setValue(10)
         self.spb_epoch_count.setSingleStep(1)
 
+        self.l_chb_regulariz_dropout = QLabel('Regularization\nand Dropout')
+        self.chb_regulariz_dropout = QCheckBox()
+        self.chb_regulariz_dropout.setChecked(False)
+
+        self.l_chb_learning_rate = QLabel('Dynamically\nlearning rate')
+        self.chb_learning_rate = QCheckBox()
+        self.chb_learning_rate.setChecked(False)
+
         self.btn_check_prediction = QPushButton('Result')
+        self.btn_check_prediction.setFixedWidth(150)
 
         self.tab_widget_graphs = QTabWidget()
 
         self.btn_start = QPushButton('Start')
         self.btn_start.setFixedHeight(33)
 
+
     def add_widgets_to_layout(self):
         spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+
+        spb_train_size_layout = QVBoxLayout()
+        spb_train_size_layout.addWidget(self.l_spb_train_size)
+        spb_train_size_layout.addWidget(self.spb_train_size)
+
+        spb_epoch_count_layout = QVBoxLayout()
+        spb_epoch_count_layout.addWidget(self.l_spb_epoch_count)
+        spb_epoch_count_layout.addWidget(self.spb_epoch_count)
+
+        chb_regulariz_dropout_layout = QVBoxLayout()
+        chb_regulariz_dropout_layout.addWidget(self.l_chb_regulariz_dropout)
+        chb_regulariz_dropout_layout.addWidget(self.chb_regulariz_dropout)
+
+        chb_learning_rate_layout = QVBoxLayout()
+        chb_learning_rate_layout.addWidget(self.l_chb_learning_rate)
+        chb_learning_rate_layout.addWidget(self.chb_learning_rate)
+
+        controls_layout_1 = QHBoxLayout()
+        controls_layout_1.addLayout(spb_train_size_layout)
+        controls_layout_1.addLayout(spb_epoch_count_layout)
+
+        controls_layout_2 = QHBoxLayout()
+        controls_layout_2.addLayout(chb_regulariz_dropout_layout)
+        controls_layout_2.addLayout(chb_learning_rate_layout)
+
         controls_layout = QVBoxLayout()
-        controls_layout.addWidget(self.l_spb_train_size)
-        controls_layout.addWidget(self.spb_train_size)
-        controls_layout.addSpacing(15)
-        controls_layout.addWidget(self.l_spb_epoch_count)
-        controls_layout.addWidget(self.spb_epoch_count)
+        controls_layout.addLayout(controls_layout_1)
+        controls_layout.addSpacing(20)
+        controls_layout.addLayout(controls_layout_2)
         controls_layout.addSpacing(20)
         controls_layout.addWidget(self.btn_check_prediction)
-        controls_layout.addSpacerItem(spacerItem)
 
         top_layout = QHBoxLayout()
         top_layout.addWidget(self.log_widget)
@@ -158,13 +194,39 @@ class Lab2Widget(QDockWidget, QWidget):
         self.converted_test_dataset = test_dataset
 
         # # # Define Neural Network # # #
-        self.model = models.Sequential([
-            layers.Flatten(input_shape=(28, 28, 1)),        # input layer (aligning the image before send it to input of neural network)
-            layers.Dense(units=256, activation='tanh'),     # hidden layer
-            layers.Dense(units=128, activation='tanh'),     # hidden layer
-            layers.Dense(units=64, activation='tanh'),      # hidden layer
-            layers.Dense(units=10, activation='softmax')    # output layer
-        ])
+        self.init_neural_network_model()
+
+        # # # Model Training # # #
+        history = self.model.fit(train_dataset, train_labels, epochs=self.spb_epoch_count.value(), batch_size=32,
+                                 validation_data=(valid_dataset, valid_labels))
+
+        self.create_loss_and_accuracy_graphs(history)
+
+        test_loss, test_accuracy = self.model.evaluate(test_dataset, test_labels)
+
+        print(f'\nTest accuracy is {round((test_accuracy * 100), 2)} %')
+        self.log_widget.append(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
+
+    def init_neural_network_model(self):
+        if self.chb_regulariz_dropout.checkState():
+            self.model = models.Sequential([
+                layers.Flatten(input_shape=(28, 28, 1)),    # input layer (aligning the image before send it to input of neural network)
+                layers.Dense(units=256, activation='tanh', kernel_regularizer=regularizers.l2(0.01)),  # hidden layer
+                layers.Dropout(0.1),
+                layers.Dense(units=128, activation='tanh', kernel_regularizer=regularizers.l2(0.01)),  # hidden layer
+                layers.Dropout(0.1),
+                layers.Dense(units=64, activation='tanh', kernel_regularizer=regularizers.l2(0.01)),  # hidden layer
+                layers.Dropout(0.1),
+                layers.Dense(units=10, activation='softmax')  # output layer
+            ])
+        else:
+            self.model = models.Sequential([
+                layers.Flatten(input_shape=(28, 28, 1)),    # input layer (aligning the image before send it to input of neural network)
+                layers.Dense(units=256, activation='tanh'),  # hidden layer
+                layers.Dense(units=128, activation='tanh'),  # hidden layer
+                layers.Dense(units=64, activation='tanh'),  # hidden layer
+                layers.Dense(units=10, activation='softmax')  # output layer
+            ])
 
         # # # Compiling model # # #
         """ This step prepares the model for the training process by defining the optimizer, loss function and
@@ -178,18 +240,18 @@ class Lab2Widget(QDockWidget, QWidget):
             - Метрики представляют собой дополнительные метрики, которые будут оцениваться в процессе обучения
             для оценки производительности модели. В данном случае, используется метрика 'accuracy', 
             которая измеряет точность классификации (долю правильных предсказаний). """
-        self.model.compile(optimizer='sgd',
-                           loss='categorical_crossentropy',
-                           metrics=['accuracy'])
 
-        # # # Model Training # # #
-        self.model.fit(train_dataset, train_labels, epochs=self.spb_epoch_count.value(), batch_size=32,
-                       validation_data=(valid_dataset, valid_labels))
-
-        test_loss, test_accuracy = self.model.evaluate(test_dataset, test_labels)
-
-        print(f'\nTest accuracy is {round((test_accuracy * 100), 2)} %')
-        self.log_widget.append(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
+        if self.chb_learning_rate.checkState():
+            learning_rate_schedule = ExponentialDecay(
+                initial_learning_rate=0.1,  # start learning rate
+                decay_steps=10000,          # number of learning steps at which the learning rate will decrease by decay_rate times
+                decay_rate=0.9,             # coefficient of decreasing learning rate
+                staircase=True              # if True - decreasing happened on integer values of steps
+            )
+            optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_schedule)
+            self.model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+        else:
+            self.model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
 
     def collect_data(self):
         """ This function creates an array of images and an array of labels """
@@ -271,7 +333,7 @@ class Lab2Widget(QDockWidget, QWidget):
         predictions_letters = self.convert_predictions_to_letters(predictions_numbers)
 
         fig, ax = plt.subplots(2, 5)
-        fig.suptitle('Examples of 10 random input images')
+        fig.suptitle('Examples of predictions of 10 random input images')
         for i in range(10):
             plt.subplot(2, 5, i + 1)
             plt.imshow(test_dataset_temp[i], cmap='grey')  # show 10 random images
@@ -284,3 +346,27 @@ class Lab2Widget(QDockWidget, QWidget):
         letter_map = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J'}
         predictions_letters = [letter_map[number] for number in predictions]
         return predictions_letters
+
+    def create_loss_and_accuracy_graphs(self, history):
+        train_loss = history.history['loss']
+        train_accuracy = history.history['accuracy']
+        valid_loss = history.history['val_loss']
+        valid_accuracy = history.history['val_accuracy']
+        epochs = range(1, len(train_loss) + 1)
+
+        fig, ax = plt.subplots(1, 1)
+        fig.suptitle('Training and Validation Loss')
+        plt.plot(epochs, train_loss, label='Training Loss')
+        plt.plot(epochs, valid_loss, label='Validation Loss')
+        plt.xlabel('Epochs'), plt.ylabel('Loss'), plt.legend()
+        self.add_graphs_to_widget(fig)
+
+        fig, ax = plt.subplots(1, 1)
+        fig.suptitle('Training and Validation Accuracy')
+        plt.plot(epochs, train_accuracy, label='Training Accuracy')
+        plt.plot(epochs, valid_accuracy, label='Validation Accuracy')
+        plt.xlabel('Epochs'), plt.ylabel('Accuracy'), plt.legend()
+        self.add_graphs_to_widget(fig)
+
+
+

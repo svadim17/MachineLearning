@@ -54,7 +54,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.lab2Widget = Lab2Widget()
         self.addDockWidget(Qt.RightDockWidgetArea, self.lab2Widget)
         self.tabifyDockWidget(self.lab1Widget, self.lab2Widget)
-    #
+
     # def init_lab3Widget(self):
     #     self.lab4Widget = Lab4Widget()
     #     self.addDockWidget(Qt.RightDockWidgetArea, self.lab4Widget)
