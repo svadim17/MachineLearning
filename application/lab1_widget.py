@@ -61,7 +61,6 @@ class Lab1Widget(QDockWidget, QWidget):
         # self.main_layout.addWidget(self.log_widget)
         self.main_layout.addWidget(self.tab_widget_graphs)
         self.main_layout.addWidget(self.btn_start)
-        # self.main_layout.addItem(spacerItem)
 
     def processor(self):
         self.log_widget.clear()

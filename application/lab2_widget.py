@@ -179,8 +179,8 @@ class Lab2Widget(QDockWidget, QWidget):
             для оценки производительности модели. В данном случае, используется метрика 'accuracy', 
             которая измеряет точность классификации (долю правильных предсказаний). """
         self.model.compile(optimizer='sgd',
-                      loss='categorical_crossentropy',
-                      metrics=['accuracy'])
+                           loss='categorical_crossentropy',
+                           metrics=['accuracy'])
 
         # # # Model Training # # #
         self.model.fit(train_dataset, train_labels, epochs=self.spb_epoch_count.value(), batch_size=32,
