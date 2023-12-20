@@ -367,6 +367,3 @@ class Lab2Widget(QDockWidget, QWidget):
         plt.plot(epochs, valid_accuracy, label='Validation Accuracy')
         plt.xlabel('Epochs'), plt.ylabel('Accuracy'), plt.legend()
         self.add_graphs_to_widget(fig)
-
-
-

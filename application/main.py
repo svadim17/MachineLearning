@@ -55,11 +55,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.lab2Widget)
         self.tabifyDockWidget(self.lab1Widget, self.lab2Widget)
 
-    # def init_lab3Widget(self):
-    #     self.lab4Widget = Lab4Widget()
-    #     self.addDockWidget(Qt.RightDockWidgetArea, self.lab4Widget)
-    #     self.tabifyDockWidget(self.lab3Widget, self.lab4Widget)
-
     def connect_signals(self):
         self.settings.view.chb_full_screen.toggled.connect(self.window_mode)
         self.lab1Widget.btn_start.clicked.connect(self.lab1Widget.processor)
