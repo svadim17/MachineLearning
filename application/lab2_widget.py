@@ -26,6 +26,8 @@ class Lab2Widget(QDockWidget, QWidget):
 
         # self.data_dir = '~/PycharmProjects/MachineLearning/datasets/notMNIST_large'
         self.data_dir = '/home/vadim/PycharmProjects/MachineLearning/datasets/notMNIST_small'
+        self.model = None
+        self.converted_test_dataset = None
 
         self.create_widgets()
         self.add_widgets_to_layout()
@@ -54,6 +56,8 @@ class Lab2Widget(QDockWidget, QWidget):
         self.spb_epoch_count.setValue(10)
         self.spb_epoch_count.setSingleStep(1)
 
+        self.btn_check_prediction = QPushButton('Result')
+
         self.tab_widget_graphs = QTabWidget()
 
         self.btn_start = QPushButton('Start')
@@ -64,9 +68,11 @@ class Lab2Widget(QDockWidget, QWidget):
         controls_layout = QVBoxLayout()
         controls_layout.addWidget(self.l_spb_train_size)
         controls_layout.addWidget(self.spb_train_size)
-        controls_layout.addSpacing(20)
+        controls_layout.addSpacing(15)
         controls_layout.addWidget(self.l_spb_epoch_count)
         controls_layout.addWidget(self.spb_epoch_count)
+        controls_layout.addSpacing(20)
+        controls_layout.addWidget(self.btn_check_prediction)
         controls_layout.addSpacerItem(spacerItem)
 
         top_layout = QHBoxLayout()
@@ -80,6 +86,7 @@ class Lab2Widget(QDockWidget, QWidget):
         # self.main_layout.addItem(spacerItem)
 
     def processor(self):
+        """ Main part (generating neural network) """
         self.log_widget.clear()
         self.tab_widget_graphs.clear()
 
@@ -92,6 +99,7 @@ class Lab2Widget(QDockWidget, QWidget):
             plt.imshow(images[random.choice(range(0, len(images)))], cmap='grey')  # show 10 random images
             plt.axis(False)
             plt.title(str(i + 1))
+        self.add_graphs_to_widget(fig1)
         # plt.show()
 
         # # # Check balance # # #
@@ -107,6 +115,7 @@ class Lab2Widget(QDockWidget, QWidget):
         fig2.suptitle('Histogram of file distribution by class')
         plt.bar(classes_names, classes_counts)
         plt.xlabel('Classes by name'), plt.ylabel('Number of elements')
+        self.add_graphs_to_widget(fig2)
         # plt.show()
 
         # # # Splitting on train, test, valid datasets # # #
@@ -146,8 +155,10 @@ class Lab2Widget(QDockWidget, QWidget):
         test_dataset = test_dataset / 255.0
         valid_dataset = valid_dataset / 255.0
 
+        self.converted_test_dataset = test_dataset
+
         # # # Define Neural Network # # #
-        model = models.Sequential([
+        self.model = models.Sequential([
             layers.Flatten(input_shape=(28, 28, 1)),        # input layer (aligning the image before send it to input of neural network)
             layers.Dense(units=256, activation='tanh'),     # hidden layer
             layers.Dense(units=128, activation='tanh'),     # hidden layer
@@ -167,16 +178,17 @@ class Lab2Widget(QDockWidget, QWidget):
             - Метрики представляют собой дополнительные метрики, которые будут оцениваться в процессе обучения
             для оценки производительности модели. В данном случае, используется метрика 'accuracy', 
             которая измеряет точность классификации (долю правильных предсказаний). """
-        model.compile(optimizer='sgd',
+        self.model.compile(optimizer='sgd',
                       loss='categorical_crossentropy',
                       metrics=['accuracy'])
 
         # # # Model Training # # #
-        history = model.fit(train_dataset, train_labels, epochs=self.spb_epoch_count.value(), batch_size=32,
-                            validation_data=(valid_dataset, valid_labels))
+        self.model.fit(train_dataset, train_labels, epochs=self.spb_epoch_count.value(), batch_size=32,
+                       validation_data=(valid_dataset, valid_labels))
 
-        test_loss, test_accuracy = model.evaluate(test_dataset, test_labels)
-        print(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
+        test_loss, test_accuracy = self.model.evaluate(test_dataset, test_labels)
+
+        print(f'\nTest accuracy is {round((test_accuracy * 100), 2)} %')
         self.log_widget.append(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
 
     def collect_data(self):
@@ -238,3 +250,37 @@ class Lab2Widget(QDockWidget, QWidget):
             print('There are no similar elements')
             self.log_widget.append('There are no similar elements')
         return dataset1_filtered, labels1_filtered
+
+    def add_graphs_to_widget(self, fig):
+        """ This function adds graph to widget """
+        canvas = FigureCanvas(fig)
+        tab = QWidget()
+        tab_layout = QVBoxLayout(tab)
+        tab_layout.addWidget(canvas)
+        self.tab_widget_graphs.addTab(tab, f'Graph {len(self.tab_widget_graphs) + 1}')
+
+    def btn_check_prediction_clicked(self):
+        """ This function chooses 10 random images from test dataset, predicts labels and
+        shows input image and predicted label on graph """
+        test_dataset_temp_index = np.random.choice(len(self.converted_test_dataset), size=10)   # firstly choose indexes
+                                                                                                # because numpy needs
+                                                                                                # 1-D array
+        test_dataset_temp = self.converted_test_dataset[test_dataset_temp_index]
+        predictions = self.model.predict(test_dataset_temp)
+        predictions_numbers = np.argmax(predictions, axis=1)
+        predictions_letters = self.convert_predictions_to_letters(predictions_numbers)
+
+        fig, ax = plt.subplots(2, 5)
+        fig.suptitle('Examples of 10 random input images')
+        for i in range(10):
+            plt.subplot(2, 5, i + 1)
+            plt.imshow(test_dataset_temp[i], cmap='grey')  # show 10 random images
+            plt.axis(False)
+            plt.title(str(predictions_letters[i]))
+        self.add_graphs_to_widget(fig)
+
+    def convert_predictions_to_letters(self, predictions):
+        """ This function converts predictions in numbers to predictions in letters by map """
+        letter_map = {0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J'}
+        predictions_letters = [letter_map[number] for number in predictions]
+        return predictions_letters

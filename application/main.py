@@ -64,6 +64,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings.view.chb_full_screen.toggled.connect(self.window_mode)
         self.lab1Widget.btn_start.clicked.connect(self.lab1Widget.processor)
         self.lab2Widget.btn_start.clicked.connect(self.lab2Widget.processor)
+        self.lab2Widget.btn_check_prediction.clicked.connect(self.lab2Widget.btn_check_prediction_clicked)
         # self.lab3Widget.btn_start.clicked.connect(self.lab3Widget.processor)
         # self.lab4Widget.btn_start.clicked.connect(self.lab4Widget.processor)
 

@@ -17,6 +17,7 @@ class SettingsWidget(QWidget):
         self.setWindowTitle('Settings')
         self.setMinimumSize(820, 500)
         self.config = {}
+        self.config_path = '/home/vadim/PycharmProjects/MachineLearning/application/config.yaml'
 
         self.tabWidget = QTabWidget()
         self.layout().addWidget(self.tabWidget)
@@ -37,11 +38,11 @@ class SettingsWidget(QWidget):
             logger.exception('Can\'t load config')
 
     def read_config(self):
-        with open('config.yaml', encoding='utf-8') as f:
+        with open(self.config_path, encoding='utf-8') as f:
             self.config = dict(yaml.load(f, Loader=yaml.SafeLoader))
 
     def dump_config(self):
-        with open('config.yaml', 'w') as f:
+        with open(self.config_path, 'w') as f:
             self.collect_config()
             yaml.dump(self.config, f, sort_keys=False)
 
