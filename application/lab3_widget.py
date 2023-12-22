@@ -17,13 +17,13 @@ from tensorflow.keras import layers, models
 from tensorflow.keras import regularizers
 from tensorflow.keras.optimizers.schedules import ExponentialDecay
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import seaborn as sns       # for create custom graphs
+import seaborn as sns  # for create custom graphs
 import time
 
 
-class Lab2Widget(QDockWidget, QWidget):
+class Lab3Widget(QDockWidget, QWidget):
     def __init__(self):
-        super().__init__('Lab 2')
+        super().__init__('Lab 3')
         self.central_widget = QWidget(self)
         self.setWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -42,7 +42,7 @@ class Lab2Widget(QDockWidget, QWidget):
         self.log_widget.setFontPointSize(14)
         self.log_widget.setMaximumHeight(250)
         self.log_widget.setMaximumWidth(650)
-        text = 'Laboratory 2: Implementation of a deep neural network\n\n\n'
+        text = 'Laboratory 3: Implementation of a convolutional neural network\n\n\n'
         text += 'Dataset: notMNIST\n\n'
         self.log_widget.setText(text)
 
@@ -61,13 +61,16 @@ class Lab2Widget(QDockWidget, QWidget):
         self.spb_epoch_count.setValue(10)
         self.spb_epoch_count.setSingleStep(1)
 
-        self.l_chb_regulariz_dropout = QLabel('Regularization\nand Dropout')
-        self.chb_regulariz_dropout = QCheckBox()
-        self.chb_regulariz_dropout.setChecked(False)
-
-        self.l_chb_learning_rate = QLabel('Dynamically\nlearning rate')
-        self.chb_learning_rate = QCheckBox()
-        self.chb_learning_rate.setChecked(False)
+        self.l_cb_model_parameters = QLabel('Model parameters')
+        self.cb_model_parameters = QComboBox()
+        self.cb_model_parameters.addItem('Default CNN')
+        self.cb_model_parameters.setItemData(0, 'default_cnn')
+        self.cb_model_parameters.addItem('Enable Max Pooling')
+        self.cb_model_parameters.setItemData(1, 'max_pooling')
+        self.cb_model_parameters.addItem('Enable Average Pooling')
+        self.cb_model_parameters.setItemData(2, 'average_pooling')
+        self.cb_model_parameters.addItem('LeNet-5 architecture')
+        self.cb_model_parameters.setItemData(3, 'lenet5')
 
         self.btn_check_prediction = QPushButton('Result')
         self.btn_check_prediction.setFixedWidth(150)
@@ -88,21 +91,16 @@ class Lab2Widget(QDockWidget, QWidget):
         spb_epoch_count_layout.addWidget(self.l_spb_epoch_count)
         spb_epoch_count_layout.addWidget(self.spb_epoch_count)
 
-        chb_regulariz_dropout_layout = QVBoxLayout()
-        chb_regulariz_dropout_layout.addWidget(self.l_chb_regulariz_dropout)
-        chb_regulariz_dropout_layout.addWidget(self.chb_regulariz_dropout)
-
-        chb_learning_rate_layout = QVBoxLayout()
-        chb_learning_rate_layout.addWidget(self.l_chb_learning_rate)
-        chb_learning_rate_layout.addWidget(self.chb_learning_rate)
+        cb_model_parameteres_layout = QVBoxLayout()
+        cb_model_parameteres_layout.addWidget(self.l_cb_model_parameters)
+        cb_model_parameteres_layout.addWidget(self.cb_model_parameters)
 
         controls_layout_1 = QHBoxLayout()
         controls_layout_1.addLayout(spb_train_size_layout)
         controls_layout_1.addLayout(spb_epoch_count_layout)
 
         controls_layout_2 = QHBoxLayout()
-        controls_layout_2.addLayout(chb_regulariz_dropout_layout)
-        controls_layout_2.addLayout(chb_learning_rate_layout)
+        controls_layout_2.addLayout(cb_model_parameteres_layout)
 
         controls_layout = QVBoxLayout()
         controls_layout.addLayout(controls_layout_1)
@@ -127,6 +125,7 @@ class Lab2Widget(QDockWidget, QWidget):
 
         self.log_widget.clear()
         self.tab_widget_graphs.clear()
+        self.model = None
 
         # # # Show examples of images # # #
         images, labels = self.collect_data()
@@ -169,8 +168,8 @@ class Lab2Widget(QDockWidget, QWidget):
         self.log_widget.append(f'The size of testing dataset is {int(test_proportion * len(images))}')
 
         # # # Converting labels # # #
-        encoded_labels = LabelEncoder().fit_transform(labels)       # converting to numbers
-        converted_labels = to_categorical(encoded_labels)           # converting to one-hot encoding (like a binary)
+        encoded_labels = LabelEncoder().fit_transform(labels)  # converting to numbers
+        converted_labels = to_categorical(encoded_labels)  # converting to one-hot encoding (like a binary)
 
         train_dataset, temp_dataset, train_labels, temp_labels = train_test_split(images, converted_labels,
                                                                                   test_size=(1 - train_proportion),
@@ -181,7 +180,8 @@ class Lab2Widget(QDockWidget, QWidget):
                                                                                   random_state=42)
 
         # # # Check and remove similar elements # # #
-        train_dataset, train_labels = self.check_and_remove_similar(train_dataset, train_labels, valid_dataset, test_dataset)
+        train_dataset, train_labels = self.check_and_remove_similar(train_dataset, train_labels, valid_dataset,
+                                                                    test_dataset)
 
         # # # Convert to numpy array # # #
         train_dataset = np.array(train_dataset)
@@ -207,61 +207,67 @@ class Lab2Widget(QDockWidget, QWidget):
         test_loss, test_accuracy = self.model.evaluate(test_dataset, test_labels)
 
         print(f'\nTest accuracy is {round((test_accuracy * 100), 2)} %')
-        self.log_widget.append(f'Test accuracy is {round((test_accuracy * 100), 2)} %')
+        self.log_widget.append(f'\nTest accuracy is {round((test_accuracy * 100), 2)} %')
 
         end_time = time.time()
         execution_time = end_time - start_time
         print(f'\nExecution time: {round(execution_time, 2)} seconds')
         self.log_widget.append(f'Execution time: {round(execution_time, 2)} seconds')
 
-        # self.model.save('/home/vadim/PycharmProjects/MachineLearning/saved_models/LAB2_default_with_regularize_and_dropout_and_learning_rate.h5')
+        self.model.save('/home/vadim/PycharmProjects/MachineLearning/saved_models/LAB3_CNN_lenet5.h5')
 
     def init_neural_network_model(self):
+        """ Parameters of Conv2D(): filters - Количество фильтров (ядер), которые слой будет использовать для
+                                              извлечения признаков, каждый фильтр создает карту признаков;
+                                    kernel-size - Кортеж из двух целых чисел (высота и ширина окна свертки);
+                                    strides - Кортеж  из двух целых чисел (вертикальное и горизонтальное перемещение
+                                              окна свертки при применении свертки;
+                                    padding - Строка, указывающая режим дополнения (valid или same).
+                                              valid: отсутствие дополнения,
+                                              same: такое дополнение, чтобы вывод имел тот же размер, что и вход;
+                                    activation - Функция активации, которая будет применена после свертки;
+                                    input_shape - Кортеж, представляющий размер входного изображения. """
 
-        if self.chb_regulariz_dropout.checkState():
+        if self.cb_model_parameters.currentData() == 'default_cnn':
             self.model = models.Sequential([
-                layers.Flatten(input_shape=(28, 28, 1)),    # input layer (aligning the image before send it to input of neural network)
-                layers.Dense(units=256, activation='tanh', kernel_regularizer=regularizers.l2(0.01)),  # hidden layer
-                layers.Dropout(0.1),
-                layers.Dense(units=128, activation='tanh', kernel_regularizer=regularizers.l2(0.01)),  # hidden layer
-                layers.Dropout(0.1),
-                layers.Dense(units=64, activation='tanh', kernel_regularizer=regularizers.l2(0.01)),  # hidden layer
-                layers.Dropout(0.1),
-                layers.Dense(units=10, activation='softmax')  # output layer
+                layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+                layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu'),
+                layers.Flatten(),
+                layers.Dense(units=10, activation='softmax')
             ])
-        else:
-            self.model = models.Sequential([
-                layers.Flatten(input_shape=(28, 28, 1)),    # input layer (aligning the image before send it to input of neural network)
-                layers.Dense(units=256, activation='tanh'),  # hidden layer
-                layers.Dense(units=128, activation='tanh'),  # hidden layer
-                layers.Dense(units=64, activation='tanh'),  # hidden layer
-                layers.Dense(units=10, activation='softmax')  # output layer
-            ])
-
-        # # # Compiling model # # #
-        """ This step prepares the model for the training process by defining the optimizer, loss function and
-            metrics that will be used in the training process.
-            - Оптимизатор отвечает за обновление весов модели в процессе обучения с целью минимизации функции потерь.
-            Указан оптимизатор стохастического градиентного спуска ('sgd'), который является базовым оптимизатором
-            для обучения моделей.
-            - Функция потерь определяет, как модель оценивает ошибку между предсказанными значениями и фактическими
-            метками на обучающих данных. Bспользуется функция потерь 'categorical_crossentropy', 
-            что является стандартным выбором для задачи классификации с несколькими классами. 
-            - Метрики представляют собой дополнительные метрики, которые будут оцениваться в процессе обучения
-            для оценки производительности модели. В данном случае, используется метрика 'accuracy', 
-            которая измеряет точность классификации (долю правильных предсказаний). """
-
-        if self.chb_learning_rate.checkState():
-            learning_rate_schedule = ExponentialDecay(
-                initial_learning_rate=0.1,  # start learning rate
-                decay_steps=10000,          # number of learning steps at which the learning rate will decrease by decay_rate times
-                decay_rate=0.9,             # coefficient of decreasing learning rate
-                staircase=True              # if True - decreasing happened on integer values of steps
-            )
-            optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_schedule)
-            self.model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
-        else:
             self.model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+        elif self.cb_model_parameters.currentData() == 'max_pooling':
+            self.model = models.Sequential([
+                layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+                layers.MaxPooling2D(pool_size=(2, 2)),
+                layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu'),
+                layers.MaxPooling2D(pool_size=(2, 2)),
+                layers.Flatten(),
+                layers.Dense(units=10, activation='softmax')
+            ])
+            self.model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+        elif self.cb_model_parameters.currentData() == 'average_pooling':
+            self.model = models.Sequential([
+                layers.Conv2D(filters=32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+                layers.AveragePooling2D(pool_size=(2, 2)),
+                layers.Conv2D(filters=64, kernel_size=(3, 3), activation='relu'),
+                layers.AveragePooling2D(pool_size=(2, 2)),
+                layers.Flatten(),
+                layers.Dense(units=10, activation='softmax')
+            ])
+            self.model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy'])
+        elif self.cb_model_parameters.currentData() == 'lenet5':
+            self.model = models.Sequential([
+                layers.Conv2D(filters=6, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+                layers.AveragePooling2D(),
+                layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'),
+                layers.AveragePooling2D(),
+                layers.Flatten(),
+                layers.Dense(units=120, activation='relu'),
+                layers.Dense(units=84, activation='relu'),
+                layers.Dense(units=10, activation='softmax')
+            ])
+            self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
     def collect_data(self):
         """ This function creates an array of images and an array of labels """

@@ -1,3 +1,4 @@
+import joblib
 from PyQt5.QtWidgets import *
 import numpy as np
 import os
@@ -8,6 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import time
 
 
 class Lab1Widget(QDockWidget, QWidget):
@@ -19,6 +21,7 @@ class Lab1Widget(QDockWidget, QWidget):
 
         # self.data_dir = '~/PycharmProjects/MachineLearning/datasets/notMNIST_large'
         self.data_dir = '/home/vadim/PycharmProjects/MachineLearning/datasets/notMNIST_small'
+        self.model = None
 
         self.create_widgets()
         self.add_widgets_to_layout()
@@ -63,6 +66,8 @@ class Lab1Widget(QDockWidget, QWidget):
         self.main_layout.addWidget(self.btn_start)
 
     def processor(self):
+        start_time = time.time()
+
         self.log_widget.clear()
         self.tab_widget_graphs.clear()
 
@@ -120,10 +125,10 @@ class Lab1Widget(QDockWidget, QWidget):
         valid_dataset = self.convert_to_2D_array(valid_dataset)
         test_dataset = self.convert_to_2D_array(test_dataset)
 
-        classificator = LogisticRegression(max_iter=100)  # max_iter=100 - default value
-        classificator.fit(train_dataset, train_labels)  # training
+        self.model = LogisticRegression(max_iter=100)  # max_iter=100 - default value
+        self.model.fit(train_dataset, train_labels)  # training
 
-        valid_labels_predict = classificator.predict(valid_dataset)
+        valid_labels_predict = self.model.predict(valid_dataset)
         accuracy = accuracy_score(valid_labels, valid_labels_predict)
         print(f'The accuracy of predicting is {round(accuracy * 100, 2)} %')
         self.log_widget.append(f'The accuracy of predicting is {round(accuracy * 100, 2)} %')
@@ -143,19 +148,27 @@ class Lab1Widget(QDockWidget, QWidget):
         # save_result_to_file(train_size=int(train_proportion * len(images)), accuracy=round(accuracy * 100, 2),
         #                     file_dir='files/accuracy_history_small.txt')
 
-        # Plotting the dependence of the classificator accuracy on the size of the training dataset
+        # Plotting the dependence of the model accuracy on the size of the training dataset
         train_sizes, accuracies = self.read_data_from_file(file_dir='/home/vadim/PycharmProjects/'
                                                                     'MachineLearning/files/accuracy_history_small.txt')
         x_axis = np.array(train_sizes)
         y_axis = np.array(accuracies)
 
         fig4, ax4 = plt.subplots(1, 1)  # show distribution on plot
-        fig4.suptitle('The dependence of classificator accuracy on the size of the training dataset')
+        fig4.suptitle('The dependence of model accuracy on the size of the training dataset')
         plt.plot(x_axis, y_axis)
         plt.xlabel('The size of the training dataset, count'), plt.ylabel('Resulting accuracy, %')
         # plt.show()
 
         self.add_graphs_to_widget(fig1, fig2, fig3, fig4)
+
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f'\nExecution time: {round(execution_time, 2)} seconds')
+        self.log_widget.append(f'Execution time: {round(execution_time, 2)} seconds')
+
+        # # # Save model to file # # #
+        # joblib.dump(self.model, '/home/vadim/PycharmProjects/MachineLearning/saved_models/LAB1_logistic_regression.joblib')
 
     def collect_data(self):
         """ This function creates an array of images and an array of labels """

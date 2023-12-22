@@ -1,12 +1,10 @@
-def create_thread_neural_network(self):
-    thread_neural_network = QThread()
-
-    def on_started():
-        lab2_widget = Lab2Widget()
-        lab2_widget.setParent(None)  # Убираем родителя
-        lab2_widget.show()
-
-    thread_neural_network.started.connect(on_started)
-    thread_neural_network.finished.connect(thread_neural_network.deleteLater)
-
-    thread_neural_network.start()
+model = keras.Sequential()
+model.add(layers.Conv2D(filters=6, kernel_size=(3, 3), activation='relu', input_shape=(32,32,1)))
+model.add(layers.AveragePooling2D())
+model.add(layers.Conv2D(filters=16, kernel_size=(3, 3), activation='relu'))
+model.add(layers.AveragePooling2D())
+model.add(layers.Flatten())
+model.add(layers.Dense(units=120, activation='relu'))
+model.add(layers.Dense(units=84, activation='relu'))
+model.add(layers.Dense(units=10, activation = 'softmax'))
+model.compile(loss=keras.losses.categorical_crossentropy, optimizer=keras.optimizers.Adam(), metrics=['accuracy'])
