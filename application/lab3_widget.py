@@ -214,7 +214,7 @@ class Lab3Widget(QDockWidget, QWidget):
         print(f'\nExecution time: {round(execution_time, 2)} seconds')
         self.log_widget.append(f'Execution time: {round(execution_time, 2)} seconds')
 
-        self.model.save('/home/vadim/PycharmProjects/MachineLearning/saved_models/LAB3_CNN_lenet5.h5')
+        # self.model.save('/home/vadim/PycharmProjects/MachineLearning/saved_models/LAB3_CNN_lenet5.h5')
 
     def init_neural_network_model(self):
         """ Parameters of Conv2D(): filters - Количество фильтров (ядер), которые слой будет использовать для

@@ -6,6 +6,7 @@ from settings import SettingsWidget
 from lab1_widget import Lab1Widget
 from lab2_widget import Lab2Widget
 from lab3_widget import Lab3Widget
+from conclusion_widget import ConclusionWidget
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -19,6 +20,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.init_lab1Widget()
         self.init_lab2Widget()
         self.init_lab3Widget()
+        self.init_conclusionWidget()
         # self.init_lab3Widget()
         self.connect_signals()
 
@@ -62,15 +64,24 @@ class MainWindow(QtWidgets.QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.lab3Widget)
         self.tabifyDockWidget(self.lab2Widget, self.lab3Widget)
 
+    def init_conclusionWidget(self):
+        self.conclusionWidget = ConclusionWidget()
+        self.addDockWidget(Qt.RightDockWidgetArea, self.conclusionWidget)
+        self.tabifyDockWidget(self.lab3Widget, self.conclusionWidget)
+
     def connect_signals(self):
         self.settings.view.chb_full_screen.toggled.connect(self.window_mode)
+
         self.lab1Widget.btn_start.clicked.connect(self.lab1Widget.processor)
+
         self.lab2Widget.btn_start.clicked.connect(self.lab2Widget.processor)
         self.lab2Widget.btn_check_prediction.clicked.connect(self.lab2Widget.btn_check_prediction_clicked)
+
         self.lab3Widget.btn_start.clicked.connect(self.lab3Widget.processor)
         self.lab3Widget.btn_check_prediction.clicked.connect(self.lab3Widget.btn_check_prediction_clicked)
-        # self.lab3Widget.btn_start.clicked.connect(self.lab3Widget.processor)
-        # self.lab4Widget.btn_start.clicked.connect(self.lab4Widget.processor)
+
+        self.conclusionWidget.btn_collect_dataset.clicked.connect(self.conclusionWidget.collect_test_dataset)
+        self.conclusionWidget.btn_check_accuracy.clicked.connect(self.conclusionWidget.btn_check_accuracy_clicked)
 
     def window_mode(self, state: bool):
         if state:
