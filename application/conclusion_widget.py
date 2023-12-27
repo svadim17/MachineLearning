@@ -72,8 +72,13 @@ class ConclusionWidget(QDockWidget, QWidget):
         for i in range(self.table_accuracy.rowCount()):
             self.table_accuracy.setItem(i, 0, QTableWidgetItem(str(self.models_names[i])))
             self.table_accuracy.setItem(i, 1, QTableWidgetItem('100'))
-        self.table_accuracy.setColumnWidth(0, 500)
+        self.table_accuracy.setColumnWidth(0, 400)
         self.table_accuracy.horizontalHeader().setStretchLastSection(True)
+
+        self.l_status = QLabel('Status: ')
+        self.l_status.setStyleSheet("font-size: 18px;")
+        self.status = QLabel('First collect test dataset')
+        self.status.setStyleSheet("font-size: 16px;")
 
     def add_widgets_to_layout(self):
         spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -98,19 +103,28 @@ class ConclusionWidget(QDockWidget, QWidget):
         controls_layout1.addSpacing(150)
         controls_layout1.addLayout(btn_check_accuracy_layout)
 
+        status_layoyt = QHBoxLayout()
+        status_layoyt.addWidget(self.l_status)
+        status_layoyt.addWidget(self.status)
+        status_layoyt.addSpacing(700)
+
         self.main_layout.addSpacing(10)
         self.main_layout.addLayout(controls_layout1)
         self.main_layout.addSpacing(10)
         self.main_layout.addWidget(self.table_accuracy)
         self.main_layout.addSpacing(10)
+        self.main_layout.addLayout(status_layoyt)
+        self.main_layout.addSpacing(10)
 
         # self.main_layout.addSpacerItem(spacerItem)
 
     def read_models(self):
+        """ This function reads names of neural network models in directory """
         for model_name in os.listdir(self.models_dir):
             self.models_names.append(model_name)
 
     def collect_test_dataset(self):
+        """ This function collects test dataset by selected proportion """
         images, labels = [], []
         for class_label in os.listdir(self.dataset_dir):  # create labels 0:9 for folders names
             class_dir = os.path.join(self.dataset_dir, class_label)  # directories for every class
@@ -141,6 +155,7 @@ class ConclusionWidget(QDockWidget, QWidget):
         self.test_converted_dataset = test_dataset_normalize
 
         print('Test dataset collected successfully! ')
+        self.status.setText('Test dataset collected successfully! ')
 
     def convert_to_2D_array(self, dataset):
         """ This function convert input dataset with 3D dimension to 2D array """
@@ -150,28 +165,36 @@ class ConclusionWidget(QDockWidget, QWidget):
         return dataset_2D
 
     def btn_check_accuracy_clicked(self):
+        """ This function calculates accuracies and losses by collected test datasets """
+        self.status.setText('Checking accuracies...')
         self.load_models()
         test_losses, test_accuracies = [], []
-        for i in range(len(self.models)):
-            if self.models_names[i] == 'LAB1_logistic_regression.joblib':
-                test_labels_predict = self.models[i].predict(self.test_dataset_2D)
-                # loss = log_loss(self.test_labels, test_labels_predict)
-                loss = 'No info'
-                accuracy = accuracy_score(self.test_labels, test_labels_predict)
-            else:
-                loss, accuracy = self.models[i].evaluate(self.test_converted_dataset, self.test_labels_converted)
-            if type(loss) is not str:
-                test_losses.append(round((loss * 100), 2))
-            else:
-                test_losses.append(loss)
-            test_accuracies.append(round((accuracy * 100), 2))
+        try:
+            for i in range(len(self.models)):
+                if self.models_names[i] == 'LAB1_logistic_regression.joblib':
+                    test_labels_predict = self.models[i].predict(self.test_dataset_2D)
+                    # loss = log_loss(self.test_labels, test_labels_predict)
+                    loss = 'No info'
+                    accuracy = accuracy_score(self.test_labels, test_labels_predict)
+                else:
+                    loss, accuracy = self.models[i].evaluate(self.test_converted_dataset, self.test_labels_converted)
+                if type(loss) is not str:
+                    test_losses.append(round((loss * 100), 2))
+                else:
+                    test_losses.append(loss)
+                test_accuracies.append(round((accuracy * 100), 2))
 
-        self.update_table(test_accuracies, test_losses)
+            self.update_table(test_accuracies, test_losses)
+            self.status.setText('Accuracies checked. Table was updated.')
+        except:
+            print('Error: May be you didn`t collect test dataset.')
+            self.status.setText('Error! May be you didn`t collect test dataset.')
 
         # print(f'losses: {test_losses}')
         # print(f'accuracies: {test_accuracies}')
 
     def load_models(self):
+        """ This funtion loads neural network models from one file .joblib and other files .h5 """
         self.models = []
         for model_name in self.models_names:
             if model_name == 'LAB1_logistic_regression.joblib':
@@ -180,13 +203,7 @@ class ConclusionWidget(QDockWidget, QWidget):
                 self.models.append(load_model(self.models_dir + f'/{model_name}'))
 
     def update_table(self, accuracy: list, loss: list):
+        """ This function update table with new values of accuracies and losses """
         for i in range(self.table_accuracy.rowCount()):
             self.table_accuracy.setItem(i, 2, QTableWidgetItem(str(accuracy[i]) + ' %'))
             self.table_accuracy.setItem(i, 3, QTableWidgetItem(str(loss[i]) + ' %'))
-
-
-
-
-
-
-
