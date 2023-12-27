@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, log_loss
 from sklearn.preprocessing import LabelEncoder
 import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
@@ -35,6 +36,10 @@ class ConclusionWidget(QDockWidget, QWidget):
         self.models_dir = '/home/vadim/PycharmProjects/MachineLearning/saved_models'
         self.models_names = []
         self.models = []
+        self.test_dataset_2D = None
+        self.test_converted_dataset = None
+        self.test_labels = None
+        self.test_labels_converted = None
 
         self.read_models()
         self.create_widgets()
@@ -59,8 +64,8 @@ class ConclusionWidget(QDockWidget, QWidget):
 
         self.table_accuracy = QTableWidget()
         self.table_accuracy.setRowCount(len(self.models_names))
-        self.table_accuracy.setColumnCount(3)
-        self.table_accuracy.setHorizontalHeaderLabels(['Model name', 'Epoch count', 'Accuracy'])
+        self.table_accuracy.setColumnCount(4)
+        self.table_accuracy.setHorizontalHeaderLabels(['Model name', 'Epoch count', 'Accuracy', 'Loss'])
         for i in range(self.table_accuracy.columnCount()):
             self.table_accuracy.horizontalHeaderItem(i).setTextAlignment(Qt.AlignCenter)
         self.table_accuracy.setEditTriggers(QAbstractItemView.NoEditTriggers)  # disable items editing
@@ -105,18 +110,10 @@ class ConclusionWidget(QDockWidget, QWidget):
         for model_name in os.listdir(self.models_dir):
             self.models_names.append(model_name)
 
-    def load_models(self):
-        for model_name in self.models_names:
-            if model_name == 'LAB1_logistic_regression.joblib':
-                self.models.append(joblib.load(self.models_dir + f'/{model_name}'))
-            else:
-                self.models.append(load_model(self.models_dir + f'/{model_name}'))
-        print(self.models)
-
     def collect_test_dataset(self):
         images, labels = [], []
-        for class_label in os.listdir(self.data_dir):  # create labels 0:9 for folders names
-            class_dir = os.path.join(self.data_dir, class_label)  # directories for every class
+        for class_label in os.listdir(self.dataset_dir):  # create labels 0:9 for folders names
+            class_dir = os.path.join(self.dataset_dir, class_label)  # directories for every class
             for image_file in os.listdir(class_dir):
                 image_path = os.path.join(class_dir, image_file)  # get full path for image
                 try:
@@ -131,22 +128,63 @@ class ConclusionWidget(QDockWidget, QWidget):
 
         test_dataset_size = self.spb_test_size.value()
 
+        temp_dataset, test_dataset, temp_labels, test_labels = train_test_split(images, labels,
+                                                                                test_size=(test_dataset_size / 100),
+                                                                                random_state=42)
+        self.test_labels = test_labels
+        test_dataset_2D = self.convert_to_2D_array(test_dataset)
 
+        self.test_labels_converted = to_categorical(LabelEncoder().fit_transform(test_labels))
+        test_dataset_normalize = test_dataset / 255.0       # normalization
 
+        self.test_dataset_2D = test_dataset_2D
+        self.test_converted_dataset = test_dataset_normalize
+
+        print('Test dataset collected successfully! ')
+
+    def convert_to_2D_array(self, dataset):
+        """ This function convert input dataset with 3D dimension to 2D array """
+        numb_of_elements = len(dataset)  # number of images
+        numb_of_pixels = len(dataset[0]) * len(dataset[0][0])  # size of image (28x28)
+        dataset_2D = dataset.reshape(numb_of_elements, numb_of_pixels)
+        return dataset_2D
 
     def btn_check_accuracy_clicked(self):
         self.load_models()
+        test_losses, test_accuracies = [], []
+        for i in range(len(self.models)):
+            if self.models_names[i] == 'LAB1_logistic_regression.joblib':
+                test_labels_predict = self.models[i].predict(self.test_dataset_2D)
+                # loss = log_loss(self.test_labels, test_labels_predict)
+                loss = 'No info'
+                accuracy = accuracy_score(self.test_labels, test_labels_predict)
+            else:
+                loss, accuracy = self.models[i].evaluate(self.test_converted_dataset, self.test_labels_converted)
+            if type(loss) is not str:
+                test_losses.append(round((loss * 100), 2))
+            else:
+                test_losses.append(loss)
+            test_accuracies.append(round((accuracy * 100), 2))
 
-    def calculate_dataset_proportion(self, test_size):
-        """ This function calculate proportions of every dataset """
-        train = train_size / 100
-        valid_and_test = 1 - train
-        test = valid_and_test / 2
-        valid = valid_and_test - test
+        self.update_table(test_accuracies, test_losses)
 
-        test = test_size / 100
+        # print(f'losses: {test_losses}')
+        # print(f'accuracies: {test_accuracies}')
 
-        return train, valid, test
+    def load_models(self):
+        self.models = []
+        for model_name in self.models_names:
+            if model_name == 'LAB1_logistic_regression.joblib':
+                self.models.append(joblib.load(self.models_dir + f'/{model_name}'))
+            else:
+                self.models.append(load_model(self.models_dir + f'/{model_name}'))
+
+    def update_table(self, accuracy: list, loss: list):
+        for i in range(self.table_accuracy.rowCount()):
+            self.table_accuracy.setItem(i, 2, QTableWidgetItem(str(accuracy[i]) + ' %'))
+            self.table_accuracy.setItem(i, 3, QTableWidgetItem(str(loss[i]) + ' %'))
+
+
 
 
 
