@@ -72,8 +72,9 @@ class ConclusionWidget(QDockWidget, QWidget):
         for i in range(self.table_accuracy.rowCount()):
             self.table_accuracy.setItem(i, 0, QTableWidgetItem(str(self.models_names[i])))
             self.table_accuracy.setItem(i, 1, QTableWidgetItem('100'))
-        self.table_accuracy.setColumnWidth(0, 400)
+        # self.table_accuracy.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table_accuracy.horizontalHeader().setStretchLastSection(True)
+        self.table_accuracy.setColumnWidth(0, 400)
 
         self.l_status = QLabel('Status: ')
         self.l_status.setStyleSheet("font-size: 18px;")
